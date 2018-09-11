@@ -63,13 +63,29 @@
                 <strong>Warning!</strong> {{ adjusted_infusion_factor }}
             </div>
             <span v-if="!warning">
-            Adjustment factor: {{ adjusted_infusion_factor }} <br/>
-            Adjusted infusion rate: {{ adjusted_infusion_rate }} <br/>
+            Adjusted infusion rate: <strong>{{ adjusted_infusion_rate }} units/h</strong> 
+            ({{current_infusion_rate}} units/h X {{adjusted_infusion_factor}}) <br/>
             </span>
         </div>
 
         </main><!-- /.container -->
     <script>
+        var inf = Infinity
+
+        diff_bg_ranges = [ 
+            /* Bounds are (lower, upper] */
+                     [-inf, -1.5], [-1.5,-0.5], [-0.5,0.0], [0.0,0.5], [0.5,1.5], [1.5, inf]
+        ]
+
+        current_bg_ranges = [
+            /* format: (lower, upper], list of factors aligned with change_bg_ranges above */
+            [ 5,  6, [ 0.25,       0.50,        0.75,       0.75,      1.00,      1.25 ]],
+            [ 6,  8, [ 0.50,       0.75,        1.00,       1.00,      1.00,      1.25 ]],
+            [ 8, 10, [ 0.75,       1.00,        1.00,       1.00,      1.25,      1.50 ]], 
+            [10, 12, [ 1.00,       1.00,        1.25,       1.25,      1.50,      2.00 ]], 
+            [12, 20, [ 1.00,       1.25,        1.50,       1.50,      2.00,      2.00 ]]
+        ]
+    
         adj_factor = function (previous_bg, current_bg) { 
             /* returns the IV insulin infusion rate adjustment factor
                based on the previous and current blood glucose. 
@@ -85,9 +101,25 @@
                 "directive if blood glucose less than 4mmol/L. Resume IV " + 
                 "insulin at X 0.25 of the previous rate when blood glucose " + 
                 "is greater than equal to 5 mmol/L"
-            } else {
-                return Math.ceil(current_bg/ 2) * 0.25 
+            } 
+            // return Math.ceil(current_bg/ 2) * 0.25 
+
+            // Step 1. Find change column, j
+            for (var j = 0; j < diff_bg_ranges.length; j++) {
+                [lower, upper] = diff_bg_ranges[j]
+                if (lower < diff_bg && diff_bg <= upper) {
+                    break;
+                }
             }
+
+            // Step 2. Find current BG row, i, and grab the factor in column j
+            for (var i = 0; i < current_bg_ranges.length; i++) {
+                [lower, upper, factors] = current_bg_ranges[i]
+                if (lower < current_bg && current_bg <= upper) {
+                    return factors[j]
+                }
+            }
+            return "Error, no factor found..."
         }
 
         Vue.component('todo-item', {
