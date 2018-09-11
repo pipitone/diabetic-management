@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <script src="https://unpkg.com/vue"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+        <title>Diabetic Management</title>
+        <style type="text/css">
+        body {
+          padding-top: 5rem;
+        }
+        .starter-template {
+          padding: 3rem 1.5rem;
+          text-align: center;
+        }
+        </style>
+    </head>
+    <body>
+
+        <!-- nav -->
+        <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+            <a class="navbar-brand" href="#">DM Calc</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main role="main" class="container">
+
+        <div id="app">
+            <h1>IV Insulin Rate Calculator</h1>
+            Previous glucose: 
+            <input 
+                v-model.number="previous_glucose" 
+                placeholder="0-20"
+                size="4"
+                maxwidth="4"> mmol/L <br/>
+            Current glucose: 
+            <input 
+                v-model.number="current_glucose" 
+                placeholder="0-20"
+                size="4"
+                maxwidth="4"> mmol/L <br/>
+            Current infusion rate: 
+            <input 
+                v-model.number="current_infusion_rate" 
+                placeholder="0-10"
+                size="4"
+                maxwidth="4"> units/h <br/>
+            <br/>
+            <div v-if="warning" class="alert alert-warning">
+                <strong>Warning!</strong> {{ adjusted_infusion_factor }}
+            </div>
+            <span v-if="!warning">
+            Adjustment factor: {{ adjusted_infusion_factor }} <br/>
+            Adjusted infusion rate: {{ adjusted_infusion_rate }} <br/>
+            </span>
+        </div>
+
+        </main><!-- /.container -->
+    <script>
+        adj_factor = function (previous_bg, current_bg) { 
+            /* returns the IV insulin infusion rate adjustment factor
+               based on the previous and current blood glucose. 
+               
+               Return value is a real number used to adjust the current infusion
+               rate, or a string with an error message if blood glucose levels
+               suggest medical attention is required. 
+            */
+            var diff_bg = current_bg - previous_bg;
+
+            if (current_bg <= 5) {
+                return "HOLD INSULIN INFUSION, implement hypoglycemia medical " + 
+                "directive if blood glucose less than 4mmol/L. Resume IV " + 
+                "insulin at X 0.25 of the previous rate when blood glucose " + 
+                "is greater than equal to 5 mmol/L"
+            } else {
+                return Math.ceil(current_bg/ 2) * 0.25 
+            }
+        }
+
+        Vue.component('todo-item', {
+            props: ['todo'],
+            template: '<li>{{todo.text}}</li>'
+        });
+
+        new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello! ' + new Date().toLocaleString(),
+                previous_glucose: null,
+                current_glucose: null,
+                current_infusion_rate: null,
+                todos: [
+                    {text: 'one'},
+                    {text: 'two'},
+                    {text: 'three'}
+                ]
+            },
+            methods: {
+                reverseMessage: function() {
+                    this.message = this.message.split('').reverse().join('');
+                }
+            },
+            computed: {
+                adjusted_infusion_factor: function() {
+                    factor = adj_factor(this.previous_glucose, this.current_glucose);
+                    return factor;
+                }, 
+                adjusted_infusion_rate: function() { 
+                    return this.adjusted_infusion_factor *
+                        this.current_infusion_rate;
+                },
+                warning: function() {
+                    return (typeof this.adjusted_infusion_factor === 'string');
+                }
+            }
+        });
+    </script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    </body>
+</html>
