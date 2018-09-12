@@ -16,6 +16,9 @@
           padding: 3rem 1.5rem;
           text-align: center;
         }
+        .curr_bg {
+            background-color: yellow;
+        }
         </style>
     </head>
     <body>
@@ -59,78 +62,41 @@
                 size="4"
                 maxwidth="4"> units/h <br/>
             <br/>
-            <div v-if="warning" class="alert alert-warning">
-                <strong>Warning!</strong> {{ adjusted_infusion_factor }}
+            <div v-if="!empty">
+                <div v-if="warning" class="alert alert-warning">
+                    <strong>Warning!</strong> {{ adjusted_infusion_factor }}
+                </div>
+                <span v-if="!warning">
+                Adjusted infusion rate: <strong>{{ adjusted_infusion_rate }} units/h</strong> 
+                ({{current_infusion_rate}} units/h X {{adjusted_infusion_factor}}) <br/>
+                </span>
             </div>
-            <span v-if="!warning">
-            Adjusted infusion rate: <strong>{{ adjusted_infusion_rate }} units/h</strong> 
-            ({{current_infusion_rate}} units/h X {{adjusted_infusion_factor}}) <br/>
-            </span>
+            <!--table border="1">
+                <tr>
+                    <td rowspan="2">Current BG</td>
+                    <td colspan="6">Change in BG</td>
+                <tr>
+                    <td v-for="range in diff_glucose_ranges">
+                        ({{range[0]}}, {{range[1]}}]
+                    </td>
+                </tr>
+                <tr v-for="range,index in current_glucose_ranges">
+                    <td>({{range.lower}}, {{range.upper}}]</td>
+                    <td v-for="factor in range.factors" 
+                        v-bind:class="{ curr_bg: bg_in_range(range, index) }">
+                        {{factor}}
+                    </td>
+                </tr>
+            </table-->
         </div>
 
         </main><!-- /.container -->
     <script>
         var inf = Infinity
 
-        diff_bg_ranges = [ 
-            /* Bounds are (lower, upper] */
-                     [-inf, -1.5], [-1.5,-0.5], [-0.5,0.0], [0.0,0.5], [0.5,1.5], [1.5, inf]
-        ]
-
-        current_bg_ranges = [
-            /* format: (lower, upper], list of factors aligned with change_bg_ranges above */
-            [ 5,  6, [ 0.25,       0.50,        0.75,       0.75,      1.00,      1.25 ]],
-            [ 6,  8, [ 0.50,       0.75,        1.00,       1.00,      1.00,      1.25 ]],
-            [ 8, 10, [ 0.75,       1.00,        1.00,       1.00,      1.25,      1.50 ]], 
-            [10, 12, [ 1.00,       1.00,        1.25,       1.25,      1.50,      2.00 ]], 
-            [12, 20, [ 1.00,       1.25,        1.50,       1.50,      2.00,      2.00 ]]
-        ]
-    
-        adj_factor = function (previous_bg, current_bg) { 
-            /* returns the IV insulin infusion rate adjustment factor
-               based on the previous and current blood glucose. 
-               
-               Return value is a real number used to adjust the current infusion
-               rate, or a string with an error message if blood glucose levels
-               suggest medical attention is required. 
-            */
-            var diff_bg = current_bg - previous_bg;
-
-            if (current_bg <= 5) {
-                return "HOLD INSULIN INFUSION, implement hypoglycemia medical " + 
-                "directive if blood glucose less than 4mmol/L. Resume IV " + 
-                "insulin at X 0.25 of the previous rate when blood glucose " + 
-                "is greater than equal to 5 mmol/L"
-            } 
-            // return Math.ceil(current_bg/ 2) * 0.25 
-
-            // Step 1. Find change column, j
-            for (var j = 0; j < diff_bg_ranges.length; j++) {
-                [lower, upper] = diff_bg_ranges[j]
-                if (lower < diff_bg && diff_bg <= upper) {
-                    break;
-                }
-            }
-
-            // Step 2. Find current BG row, i, and grab the factor in column j
-            for (var i = 0; i < current_bg_ranges.length; i++) {
-                [lower, upper, factors] = current_bg_ranges[i]
-                if (lower < current_bg && current_bg <= upper) {
-                    return factors[j]
-                }
-            }
-            return "Error, no factor found..."
-        }
-
-        Vue.component('todo-item', {
-            props: ['todo'],
-            template: '<li>{{todo.text}}</li>'
-        });
-
-        new Vue({
+        var app = new Vue({
             el: '#app',
             data: {
-                message: 'Hello! ' + new Date().toLocaleString(),
                 previous_glucose: null,
                 current_glucose: null,
                 current_infusion_rate: null,
@@ -138,25 +104,100 @@
                     {text: 'one'},
                     {text: 'two'},
                     {text: 'three'}
+                ],
+                diff_glucose_ranges: [ 
+                    /* Bounds are (lower, upper] */
+                             [-inf, -1.5], [-1.5,-0.5], [-0.5,0.0], [0.0,0.5], [0.5,1.5], [1.5, inf]
+                ],
+                current_glucose_ranges: [
+                    /* format: (lower, upper], list of factors aligned with change_bg_ranges above */
+                    { 
+                        lower: 5,  
+                        upper: 6, 
+                        factors: [ 0.25,       0.50,        0.75,       0.75,      1.00,      1.25 ]
+                    },
+                    { 
+                        lower: 6,  
+                        upper: 8, 
+                        factors: [ 0.50,       0.75,        1.00,       1.00,      1.00,      1.25 ]
+                    },
+                    { 
+                        lower: 8, 
+                        upper: 10, 
+                        factors: [ 0.75,       1.00,        1.00,       1.00,      1.25,      1.50 ]
+                    }, 
+                    {
+                        lower: 10, 
+                        upper: 12, 
+                        factors: [ 1.00,       1.00,        1.25,       1.25,      1.50,      2.00 ]
+                    }, 
+                    {
+                        lower: 12, 
+                        upper: 20, 
+                        factors: [ 1.00,       1.25,        1.50,       1.50,      2.00,      2.00 ]
+                    }
                 ]
-            },
-            methods: {
-                reverseMessage: function() {
-                    this.message = this.message.split('').reverse().join('');
-                }
             },
             computed: {
                 adjusted_infusion_factor: function() {
-                    factor = adj_factor(this.previous_glucose, this.current_glucose);
-                    return factor;
+                    return this.adj_factor();
                 }, 
                 adjusted_infusion_rate: function() { 
-                    return this.adjusted_infusion_factor *
-                        this.current_infusion_rate;
+                    return this.adjusted_infusion_factor * this.current_infusion_rate;
+                },
+                empty: function() {
+                    return (this.previous_glucose === null) || 
+                           (this.current_glucose === null) || 
+                           (this.current_infusion_rate === null)
                 },
                 warning: function() {
                     return (typeof this.adjusted_infusion_factor === 'string');
+                },
+                diff_glucose: function() {
+                    return this.current_glucose - this.previous_glucose;
                 }
+            },
+            methods: {
+                bg_in_range: function(range, index) {
+                    [diff_lower, diff_upper] = this.diff_glucose_ranges[index];
+
+                    return range.lower < this.current_glucose && this.current_glucose <= range.upper && 
+                        diff_lower < this.diff_glucose && this.current_glucose <= diff_upper;
+                },
+                adj_factor: function () { 
+                    /* returns the IV insulin infusion rate adjustment factor
+                       based on the previous and current blood glucose. 
+                       
+                       Return value is a real number used to adjust the current infusion
+                       rate, or a string with an error message if blood glucose levels
+                       suggest medical attention is required. 
+                    */
+                    if (this.current_glucose <= 5) {
+                        return "HOLD INSULIN INFUSION, implement hypoglycemia medical " + 
+                        "directive if blood glucose less than 4mmol/L. Resume IV " + 
+                        "insulin at X 0.25 of the previous rate when blood glucose " + 
+                        "is greater than equal to 5 mmol/L"
+                    } 
+                    // return Math.ceil(current_bg/ 2) * 0.25 
+
+                    // Step 1. Find change column, j
+                    for (var j = 0; j < this.diff_glucose_ranges.length; j++) {
+                        [lower, upper] = this.diff_glucose_ranges[j]
+                        if (lower < this.diff_glucose && this.diff_glucose <= upper) {
+                            break;
+                        }
+                    }
+
+                    // Step 2. Find current BG row, i, and grab the factor in column j
+                    for (var i = 0; i < this.current_glucose_ranges.length; i++) {
+                        range = this.current_glucose_ranges[i]
+                        if (range.lower < this.current_glucose && this.current_glucose <= range.upper) {
+                            return range.factors[j]
+                        }
+                    }
+                    return "Error: no adjustment factor found."
+                }
+
             }
         });
     </script>
